@@ -1,3 +1,77 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: backend-code
+  namespace: webapp
+data:
+  server.js: |
+    const express = require('express');
+    const mysql = require('mysql2');
+    const cors = require('cors');
+
+    const app = express();
+    app.use(cors());
+    app.use(express.json());
+
+    // MySQL 연결 설정
+    // mysql-service 는 쿠버네티스 Service 이름 -> 내부 DNS로 자동 연결됨
+    const db = mysql.createPool({
+      host: process.env.DB_HOST || 'mysql-service',
+      user: 'root',
+      password: process.env.DB_PASSWORD || 'guestbook1234',
+      database: 'guestbook_db',
+      waitForConnections: true,
+      connectionLimit: 10,
+    });
+
+    // 헬스체크용 (Liveness/Readiness probe 에서 사용)
+    app.get('/health', (req, res) => {
+      res.status(200).json({ status: 'ok' });
+    });
+
+    // 방명록 메시지 목록 조회
+    app.get('/api/messages', (req, res) => {
+      db.query(
+        'SELECT * FROM messages ORDER BY created_at DESC',
+        (err, results) => {
+          if (err) {
+            console.error(err);
+            return res.status(500).json({ error: 'DB 조회 실패' });
+          }
+          res.json(results);
+        }
+      );
+    });
+
+    // 방명록 메시지 등록
+    app.post('/api/messages', (req, res) => {
+      const { name, message } = req.body;
+
+      if (!name || !message) {
+        return res.status(400).json({ error: '이름과 메시지를 모두 입력해주세요.' });
+      }
+
+      const sql = 'INSERT INTO messages (name, message) VALUES (?, ?)';
+      db.query(sql, [name, message], (err, result) => {
+        if (err) {
+          console.error(err);
+          return res.status(500).json({ error: 'DB 저장 실패' });
+        }
+        res.status(201).json({ message: '메시지가 등록되었습니다.', id: result.insertId });
+      });
+    });
+
+    // 이 서버가 어느 파드에서 응답했는지 확인용 (고가용성 테스트에 유용)
+    app.get('/api/whoami', (req, res) => {
+      res.json({ hostname: require('os').hostname() });
+    });
+
+    const PORT = 8080;
+    app.listen(PORT, () => {
+      console.log(`Backend server running on port ${PORT}`);
+    });
+
+---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -15,27 +89,38 @@ spec:
     spec:
       containers:
       - name: backend
-        image: reservation-backend:latest
-        imagePullPolicy: Never
+        image: node:20-alpine
+        command: ["sh", "-c"]
+        args:
+          - "npm install express mysql2 cors --no-fund --no-audit --silent && node server.js"
+        workingDir: /app
         ports:
         - containerPort: 8080
         env:
         - name: DB_HOST
           value: "mysql-service"
         - name: DB_PASSWORD
-          value: "reservation1234"
+          value: "guestbook1234"
+        volumeMounts:
+        - name: backend-code
+          mountPath: /app/server.js
+          subPath: server.js
         readinessProbe:
           httpGet:
             path: /health
             port: 8080
-          initialDelaySeconds: 5
+          initialDelaySeconds: 20
           periodSeconds: 10
         livenessProbe:
           httpGet:
             path: /health
             port: 8080
-          initialDelaySeconds: 10
+          initialDelaySeconds: 30
           periodSeconds: 15
+      volumes:
+      - name: backend-code
+        configMap:
+          name: backend-code
 
 ---
 apiVersion: v1
