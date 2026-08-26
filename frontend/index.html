@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <title>방명록</title>
+  <style>
+    body {
+      font-family: 'Malgun Gothic', sans-serif;
+      max-width: 500px;
+      margin: 40px auto;
+      background: #f7f5f0;
+      padding: 20px;
+    }
+    h1 {
+      text-align: center;
+      color: #333;
+    }
+    form {
+      background: white;
+      padding: 20px;
+      border-radius: 10px;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+      margin-bottom: 24px;
+    }
+    input, textarea {
+      width: 100%;
+      padding: 10px;
+      margin: 6px 0 14px 0;
+      border: 1px solid #ddd;
+      border-radius: 6px;
+      box-sizing: border-box;
+      font-size: 14px;
+    }
+    button {
+      width: 100%;
+      padding: 12px;
+      background: #d47a6a;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      font-size: 15px;
+      cursor: pointer;
+    }
+    button:hover {
+      background: #c06554;
+    }
+    .message-card {
+      background: white;
+      padding: 14px 16px;
+      border-radius: 8px;
+      margin-bottom: 10px;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+    }
+    .message-name {
+      font-weight: bold;
+      color: #d47a6a;
+    }
+    .message-time {
+      font-size: 12px;
+      color: #999;
+      float: right;
+    }
+    .message-text {
+      margin-top: 6px;
+      color: #444;
+      white-space: pre-wrap;
+    }
+    #status {
+      text-align: center;
+      color: #888;
+      font-size: 13px;
+    }
+  </style>
+</head>
+<body>
+  <h1>💌 방명록</h1>
+
+  <form id="guestForm">
+    <label for="name">이름</label>
+    <input type="text" id="name" placeholder="이름을 입력하세요" required />
+
+    <label for="message">축하 메시지</label>
+    <textarea id="message" rows="3" placeholder="메시지를 남겨주세요" required></textarea>
+
+    <button type="submit">등록하기</button>
+  </form>
+
+  <div id="status"></div>
+  <div id="messageList"></div>
+
+  <script>
+    // 백엔드 API 주소: 같은 도메인/포트를 쓰고 있다면 상대경로로 충분
+    // Ingress를 통해 /api 경로로 backend-service 에 연결되도록 구성되어 있음
+    const API_BASE = '/api';
+
+    const form = document.getElementById('guestForm');
+    const statusEl = document.getElementById('status');
+    const listEl = document.getElementById('messageList');
+
+    async function loadMessages() {
+      statusEl.textContent = '불러오는 중...';
+      try {
+        const res = await fetch(`${API_BASE}/messages`);
+        const data = await res.json();
+        listEl.innerHTML = '';
+        data.forEach(msg => {
+          const card = document.createElement('div');
+          card.className = 'message-card';
+          card.innerHTML = `
+            <span class="message-name">${escapeHtml(msg.name)}</span>
+            <span class="message-time">${new Date(msg.created_at).toLocaleString()}</span>
+            <div class="message-text">${escapeHtml(msg.message)}</div>
+          `;
+          listEl.appendChild(card);
+        });
+        statusEl.textContent = `총 ${data.length}개의 메시지`;
+      } catch (err) {
+        statusEl.textContent = '메시지를 불러오지 못했습니다.';
+        console.error(err);
+      }
+    }
+
+    function escapeHtml(str) {
+      const div = document.createElement('div');
+      div.textContent = str;
+      return div.innerHTML;
+    }
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const name = document.getElementById('name').value.trim();
+      const message = document.getElementById('message').value.trim();
+      if (!name || !message) return;
+
+      try {
+        const res = await fetch(`${API_BASE}/messages`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name, message }),
+        });
+        if (!res.ok) throw new Error('등록 실패');
+
+        form.reset();
+        loadMessages();
+      } catch (err) {
+        alert('메시지 등록에 실패했습니다.');
+        console.error(err);
+      }
+    });
+
+    loadMessages();
+  </script>
+</body>
+</html>
