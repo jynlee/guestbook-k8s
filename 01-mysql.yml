@@ -1,3 +1,38 @@
+# ── PersistentVolume: 실제 저장 공간 (hostPath 방식) ──
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: mysql-pv
+spec:
+  capacity:
+    storage: 1Gi
+  accessModes:
+    - ReadWriteOnce
+  hostPath:
+    path: /mnt/data/mysql
+  nodeAffinity:
+    required:
+      nodeSelectorTerms:
+      - matchExpressions:
+        - key: kubernetes.io/hostname
+          operator: In
+          values:
+          - worker01          # ← 실제 노드 이름 확인 후 필요시 수정
+---
+# ── PersistentVolumeClaim: mysql이 저장공간을 요청하는 신청서 ──
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: mysql-pvc
+  namespace: webapp
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Gi
+---
+# ── ConfigMap: DB/테이블 초기화 스크립트 ──
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -13,8 +48,8 @@ data:
       message VARCHAR(255) NOT NULL,
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     );
-
 ---
+# ── Deployment: mysql ──
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -30,25 +65,34 @@ spec:
       labels:
         app: mysql
     spec:
+      nodeSelector:
+        kubernetes.io/hostname: worker01   # ← PV의 노드와 반드시 동일하게
       containers:
       - name: mysql
         image: mysql:8.0
+        imagePullPolicy: IfNotPresent
         env:
         - name: MYSQL_ROOT_PASSWORD
-          value: "guestbook1234"
+          value: guestbook1234
         - name: MYSQL_DATABASE
-          value: "guestbook_db"
+          value: guestbook_db
         ports:
         - containerPort: 3306
+          protocol: TCP
         volumeMounts:
         - name: init-script
           mountPath: /docker-entrypoint-initdb.d
+        - name: mysql-data
+          mountPath: /var/lib/mysql
       volumes:
       - name: init-script
         configMap:
           name: mysql-init-script
-
+      - name: mysql-data
+        persistentVolumeClaim:
+          claimName: mysql-pvc
 ---
+# ── Service: mysql-service ──
 apiVersion: v1
 kind: Service
 metadata:
