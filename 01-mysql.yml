@@ -1,4 +1,12 @@
-# ── PersistentVolume: 실제 저장 공간 (hostPath 방식) ──
+apiVersion: v1
+kind: Secret
+metadata:
+  name: mysql-secret
+  namespace: webapp
+type: Opaque
+stringData:
+  MYSQL_ROOT_PASSWORD: guestbook1234
+---
 apiVersion: v1
 kind: PersistentVolume
 metadata:
@@ -17,9 +25,8 @@ spec:
         - key: kubernetes.io/hostname
           operator: In
           values:
-          - worker01          # ← 실제 노드 이름 확인 후 필요시 수정
+          - worker01
 ---
-# ── PersistentVolumeClaim: mysql이 저장공간을 요청하는 신청서 ──
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
@@ -32,7 +39,6 @@ spec:
     requests:
       storage: 1Gi
 ---
-# ── ConfigMap: DB/테이블 초기화 스크립트 ──
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -49,7 +55,6 @@ data:
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     );
 ---
-# ── Deployment: mysql ──
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -66,14 +71,17 @@ spec:
         app: mysql
     spec:
       nodeSelector:
-        kubernetes.io/hostname: worker01   # ← PV의 노드와 반드시 동일하게
+        kubernetes.io/hostname: worker01
       containers:
       - name: mysql
         image: mysql:8.0
         imagePullPolicy: IfNotPresent
         env:
         - name: MYSQL_ROOT_PASSWORD
-          value: guestbook1234
+          valueFrom:
+            secretKeyRef:
+              name: mysql-secret
+              key: MYSQL_ROOT_PASSWORD
         - name: MYSQL_DATABASE
           value: guestbook_db
         ports:
@@ -92,7 +100,6 @@ spec:
         persistentVolumeClaim:
           claimName: mysql-pvc
 ---
-# ── Service: mysql-service ──
 apiVersion: v1
 kind: Service
 metadata:

@@ -100,7 +100,10 @@ spec:
         - name: DB_HOST
           value: "mysql-service"
         - name: DB_PASSWORD
-          value: "guestbook1234"
+          valueFrom:
+            secretKeyRef:
+              name: mysql-secret
+              key: MYSQL_ROOT_PASSWORD
         volumeMounts:
         - name: backend-code
           mountPath: /app/server.js
