@@ -9,78 +9,420 @@ data:
     <html lang="ko">
     <head>
       <meta charset="UTF-8" />
-      <title>방명록</title>
+      <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+      <title>생일 초대장</title>
+      <link rel="preconnect" href="https://fonts.googleapis.com">
+      <link href="https://fonts.googleapis.com/css2?family=Parisienne&family=Cormorant+Garamond:wght@400;500;600&family=Noto+Serif+KR:wght@400;500;600&display=swap" rel="stylesheet">
       <style>
-        body {
-          font-family: 'Malgun Gothic', sans-serif;
-          max-width: 500px;
-          margin: 40px auto;
-          background: #f7f5f0;
-          padding: 20px;
+        :root{
+          --cream:#f7f1e6;
+          --cream-deep:#ece2cd;
+          --paper-edge:#e3d6ba;
+          --ink:#3a2e22;
+          --ink-soft:#6b5c48;
+          --gold:#a9803f;
+          --gold-line:#c9a568;
+          --wine:#7c3b3f;
+          --wine-deep:#5c2b2e;
+          --script:'Parisienne', cursive;
+          --serif:'Cormorant Garamond', 'Noto Serif KR', serif;
+          --kr:'Noto Serif KR', serif;
         }
-        h1 { text-align: center; color: #333; }
-        form {
-          background: white;
-          padding: 20px;
-          border-radius: 10px;
-          box-shadow: 0 2px 6px rgba(0,0,0,0.1);
-          margin-bottom: 24px;
+        *{box-sizing:border-box;}
+        html{scroll-behavior:smooth;}
+        body{
+          margin:0;
+          min-height:100vh;
+          font-family:var(--kr);
+          color:var(--ink);
+          background:
+            radial-gradient(circle at 20% 0%, rgba(169,128,63,.10), transparent 55%),
+            var(--cream);
+          display:flex;
+          align-items:flex-start;
+          justify-content:center;
+          padding:48px 18px 80px;
         }
-        input, textarea {
-          width: 100%;
-          padding: 10px;
-          margin: 6px 0 14px 0;
-          border: 1px solid #ddd;
-          border-radius: 6px;
-          box-sizing: border-box;
-          font-size: 14px;
+        .frame{
+          width:100%;
+          max-width:440px;
+          position:relative;
         }
-        button {
-          width: 100%;
-          padding: 12px;
-          background: #d47a6a;
-          color: white;
-          border: none;
-          border-radius: 6px;
-          font-size: 15px;
-          cursor: pointer;
+
+        /* ---------- stage switching ---------- */
+        .stage{ display:none; }
+        .stage.is-active{ display:block; }
+
+        /* ================= STAGE 1 : envelope ================= */
+        .env-date{
+          text-align:center;
+          font-family:var(--script);
+          font-size:34px;
+          color:var(--wine);
+          margin:0 0 4px;
+          letter-spacing:.02em;
         }
-        button:hover { background: #c06554; }
-        .message-card {
-          background: white;
-          padding: 14px 16px;
-          border-radius: 8px;
-          margin-bottom: 10px;
-          box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+        .env-caption{
+          text-align:center;
+          font-family:var(--serif);
+          font-size:13px;
+          letter-spacing:.14em;
+          color:var(--ink-soft);
+          margin:0 0 40px;
         }
-        .message-name { font-weight: bold; color: #d47a6a; }
-        .message-time { font-size: 12px; color: #999; float: right; }
-        .message-text { margin-top: 6px; color: #444; white-space: pre-wrap; }
-        #status { text-align: center; color: #888; font-size: 13px; }
+
+        .envelope{
+          position:relative;
+          width:100%;
+          max-width:340px;
+          margin:0 auto;
+          aspect-ratio:340/230;
+          cursor:pointer;
+          perspective:1400px;
+          -webkit-tap-highlight-color:transparent;
+        }
+        .env-pocket{
+          position:absolute; inset:0;
+          background:linear-gradient(180deg,#fffdf8,var(--cream-deep));
+          border:1px solid var(--paper-edge);
+          border-radius:6px;
+          box-shadow:0 18px 34px rgba(58,46,34,.16);
+          overflow:hidden;
+        }
+        .env-pocket::before{
+          /* fold lines, like an opened envelope base */
+          content:"";
+          position:absolute; left:0; right:0; bottom:0; top:38%;
+          background:
+            linear-gradient(115deg, transparent 49.6%, rgba(169,128,63,.28) 50%, transparent 50.4%),
+            linear-gradient(65deg, transparent 49.6%, rgba(169,128,63,.28) 50%, transparent 50.4%);
+        }
+        .env-flap{
+          position:absolute;
+          left:0; right:0; top:0;
+          height:62%;
+          clip-path:polygon(0 0, 100% 0, 50% 88%);
+          background:linear-gradient(160deg,#fffdf8,var(--cream-deep));
+          border-top:1px solid var(--paper-edge);
+          transform-origin:top center;
+          transform-style:preserve-3d;
+          transition:transform 1s cubic-bezier(.6,.05,.2,1);
+          z-index:3;
+        }
+        .env-flap::after{
+          content:"";
+          position:absolute; inset:0;
+          clip-path:polygon(0 0, 100% 0, 50% 88%);
+          box-shadow:inset 0 0 0 1px rgba(169,128,63,.35);
+        }
+        .env-seal{
+          position:absolute;
+          left:50%; top:34%;
+          width:46px; height:46px;
+          transform:translate(-50%,-50%);
+          border-radius:50%;
+          background:radial-gradient(circle at 35% 30%, #c9a568, var(--gold) 70%);
+          border:1px solid #8f6a2c;
+          display:flex; align-items:center; justify-content:center;
+          font-family:var(--script);
+          font-size:22px;
+          color:#fffaf0;
+          box-shadow:0 3px 8px rgba(58,46,34,.35);
+          z-index:4;
+        }
+        .env-letter{
+          position:absolute;
+          left:6%; right:6%; bottom:6%;
+          height:70%;
+          background:#fffdf8;
+          border:1px solid var(--paper-edge);
+          border-radius:4px;
+          box-shadow:0 6px 18px rgba(58,46,34,.18);
+          transform:translateY(6%) scale(.92);
+          opacity:0;
+          transition:transform 1s cubic-bezier(.2,.7,.3,1) .15s, opacity .7s ease .15s;
+          z-index:2;
+        }
+        .envelope.is-open .env-flap{
+          transform:rotateX(-178deg);
+          z-index:1;
+        }
+        .envelope.is-open .env-letter{
+          transform:translateY(-46%) scale(1);
+          opacity:1;
+          z-index:5;
+        }
+
+        .env-hint{
+          text-align:center;
+          margin-top:22px;
+          font-family:var(--serif);
+          font-size:13px;
+          font-style:italic;
+          color:var(--ink-soft);
+          letter-spacing:.02em;
+        }
+
+        /* ================= STAGE 2 : invitation ================= */
+        .card{
+          background:#fffdf8;
+          border:1px solid var(--paper-edge);
+          border-radius:8px;
+          padding:44px 34px 38px;
+          box-shadow:0 18px 40px rgba(58,46,34,.14);
+          text-align:center;
+          animation:riseIn .7s cubic-bezier(.2,.7,.3,1);
+        }
+        @keyframes riseIn{
+          from{ opacity:0; transform:translateY(18px); }
+          to{ opacity:1; transform:translateY(0); }
+        }
+        .card .eyebrow-script{
+          font-family:var(--script);
+          font-size:30px;
+          color:var(--wine);
+          margin:0 0 18px;
+        }
+        .card p{
+          font-family:var(--kr);
+          font-size:15px;
+          line-height:1.9;
+          color:var(--ink-soft);
+          margin:0 0 6px;
+        }
+        .card .who{
+          font-family:var(--serif);
+          font-size:17px;
+          color:var(--ink);
+          margin:22px 0 24px;
+          letter-spacing:.02em;
+        }
+        .divider{
+          width:40px; height:1px;
+          background:var(--gold);
+          margin:26px auto;
+        }
+        .card .when{
+          font-family:var(--script);
+          font-size:28px;
+          color:var(--ink);
+          margin:0 0 6px;
+        }
+        .card .where{
+          font-family:var(--script);
+          font-size:24px;
+          color:var(--wine);
+          margin:0 0 34px;
+        }
+        .btn{
+          display:inline-block;
+          font-family:var(--serif);
+          font-size:13px;
+          letter-spacing:.16em;
+          color:#fffaf0;
+          background:var(--wine);
+          border:none;
+          padding:14px 30px;
+          border-radius:3px;
+          cursor:pointer;
+          transition:background .2s ease;
+        }
+        .btn:hover{ background:var(--wine-deep); }
+
+        /* ================= STAGE 3 : guestbook ================= */
+        .gb-card{
+          background:#fffdf8;
+          border:1px solid var(--paper-edge);
+          border-radius:8px;
+          padding:36px 30px 32px;
+          box-shadow:0 18px 40px rgba(58,46,34,.14);
+          animation:riseIn .6s cubic-bezier(.2,.7,.3,1);
+        }
+        .gb-card h2{
+          text-align:center;
+          font-family:var(--script);
+          font-size:32px;
+          color:var(--wine);
+          margin:0 0 4px;
+          font-weight:400;
+        }
+        .gb-card .gb-sub{
+          text-align:center;
+          font-family:var(--serif);
+          font-size:13px;
+          color:var(--ink-soft);
+          margin:0 0 26px;
+          font-style:italic;
+        }
+        label{
+          display:block;
+          font-family:var(--serif);
+          font-size:12.5px;
+          letter-spacing:.06em;
+          color:var(--ink-soft);
+          margin:0 0 6px;
+        }
+        input, textarea{
+          width:100%;
+          font-family:var(--kr);
+          font-size:14px;
+          padding:11px 12px;
+          margin:0 0 16px;
+          border:1px solid var(--paper-edge);
+          border-radius:4px;
+          background:#fffefb;
+          color:var(--ink);
+        }
+        input:focus, textarea:focus{
+          outline:none;
+          border-color:var(--gold);
+        }
+        textarea{ resize:vertical; min-height:70px; }
+        .gb-card form .btn{ width:100%; }
+        #status{
+          text-align:center;
+          font-family:var(--serif);
+          font-size:12.5px;
+          color:var(--ink-soft);
+          margin:18px 0 6px;
+        }
+        #messageList{ margin-top:8px; }
+        .message-card{
+          background:#fffefb;
+          border:1px solid var(--paper-edge);
+          border-radius:6px;
+          padding:14px 16px;
+          margin-bottom:10px;
+        }
+        .message-name{
+          font-family:var(--serif);
+          font-weight:600;
+          color:var(--wine);
+          font-size:14.5px;
+        }
+        .message-time{
+          float:right;
+          font-family:var(--serif);
+          font-size:11.5px;
+          color:#a99a86;
+        }
+        .message-text{
+          margin-top:6px;
+          font-size:14px;
+          color:var(--ink);
+          white-space:pre-wrap;
+          line-height:1.7;
+        }
+        .back-link{
+          display:block;
+          text-align:center;
+          margin-top:22px;
+          font-family:var(--serif);
+          font-size:12.5px;
+          letter-spacing:.1em;
+          color:var(--ink-soft);
+          text-decoration:none;
+        }
+        .back-link:hover{ color:var(--wine); }
       </style>
     </head>
     <body>
-      <h1>💌 방명록</h1>
+      <div class="frame">
 
-      <form id="guestForm">
-        <label for="name">이름</label>
-        <input type="text" id="name" placeholder="이름을 입력하세요" required />
+        <!-- ===== STAGE 1 : ENVELOPE ===== -->
+        <section id="stageEnvelope" class="stage is-active">
+          <p class="env-date">2026 · 10 · 03</p>
+          <p class="env-caption">YOU ARE INVITED</p>
 
-        <label for="message">축하 메시지</label>
-        <textarea id="message" rows="3" placeholder="메시지를 남겨주세요" required></textarea>
+          <div class="envelope" id="envelope" role="button" aria-label="초대장 열어보기">
+            <div class="env-pocket"></div>
+            <div class="env-letter"></div>
+            <div class="env-flap"></div>
+            <div class="env-seal">K</div>
+          </div>
 
-        <button type="submit">등록하기</button>
-      </form>
+          <p class="env-hint">봉투를 눌러 초대장을 열어보세요</p>
+        </section>
 
-      <div id="status"></div>
-      <div id="messageList"></div>
+        <!-- ===== STAGE 2 : INVITATION ===== -->
+        <section id="stageInvite" class="stage">
+          <div class="card">
+            <p class="eyebrow-script">You're Invited</p>
+            <p>소중한 분들을 모시고</p>
+            <p>작은 생일 파티를 열려고 합니다.</p>
+            <p class="who">바쁘시더라도 오셔서 자리를 빛내주세요.</p>
+
+            <div class="divider"></div>
+
+            <p class="when">October 3rd, 2026</p>
+            <p class="where">Kopo Politech</p>
+
+            <button class="btn" id="openGuestbook">GUESTBOOK</button>
+          </div>
+        </section>
+
+        <!-- ===== STAGE 3 : GUESTBOOK ===== -->
+        <section id="stageGuestbook" class="stage">
+          <div class="gb-card">
+            <h2>Guestbook</h2>
+            <p class="gb-sub">축하 메시지를 남겨주세요</p>
+
+            <form id="guestForm">
+              <label for="name">이름</label>
+              <input type="text" id="name" placeholder="이름을 입력하세요" required />
+
+              <label for="message">축하 메시지</label>
+              <textarea id="message" placeholder="메시지를 남겨주세요" required></textarea>
+
+              <button type="submit" class="btn">등록하기</button>
+            </form>
+
+            <div id="status"></div>
+            <div id="messageList"></div>
+
+            <a href="#" class="back-link" id="backToInvite">← BACK TO INVITATION</a>
+          </div>
+        </section>
+
+      </div>
 
       <script>
         const API_BASE = '/api';
 
+        const stageEnvelope = document.getElementById('stageEnvelope');
+        const stageInvite = document.getElementById('stageInvite');
+        const stageGuestbook = document.getElementById('stageGuestbook');
+        const envelope = document.getElementById('envelope');
+        const openGuestbookBtn = document.getElementById('openGuestbook');
+        const backToInvite = document.getElementById('backToInvite');
+
         const form = document.getElementById('guestForm');
         const statusEl = document.getElementById('status');
         const listEl = document.getElementById('messageList');
+
+        function showStage(stage){
+          [stageEnvelope, stageInvite, stageGuestbook].forEach(s => s.classList.remove('is-active'));
+          stage.classList.add('is-active');
+        }
+
+        // 봉투 클릭 -> 열리는 애니메이션 -> 초대장 화면으로 전환
+        envelope.addEventListener('click', () => {
+          if (envelope.classList.contains('is-open')) return;
+          envelope.classList.add('is-open');
+          setTimeout(() => showStage(stageInvite), 950);
+        });
+
+        // GUESTBOOK 버튼 -> 방명록 화면으로 전환
+        openGuestbookBtn.addEventListener('click', () => {
+          showStage(stageGuestbook);
+          loadMessages();
+        });
+
+        // 방명록 -> 초대장으로 되돌아가기
+        backToInvite.addEventListener('click', (e) => {
+          e.preventDefault();
+          showStage(stageInvite);
+        });
 
         async function loadMessages() {
           statusEl.textContent = '불러오는 중...';
@@ -132,8 +474,6 @@ data:
             console.error(err);
           }
         });
-
-        loadMessages();
       </script>
     </body>
     </html>
